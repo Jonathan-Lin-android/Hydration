@@ -11,9 +11,12 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.NotificationCompat.Action;
 import android.support.v4.content.ContextCompat;
 import com.example.android.background.MainActivity;
 import com.example.android.background.R;
+import com.example.android.background.sync.ReminderTasks;
+import com.example.android.background.sync.WaterReminderIntentService;
 
 public class NotificationUtils {
 
@@ -21,11 +24,14 @@ public class NotificationUtils {
     // or being updated.
     private static final int WATER_REMINDER_NOTIFICATION_ID = 1138;
 
-    // pending intent id used to uniquely refernce the pending intent.
+    // pending intent id used to uniquely reference the pending intent.
     private static final int WATER_REMINDER_PENDING_INTENT_ID = 3417;
 
     // notification channel id is used to link notifications to this channel
     private static final String WATER_REMINDER_NOTIFICATION_CHANNEL_ID = "reminder_notification_channel";
+
+    private static final int ACTION_DRINK_PENDING_INTENT_ID = 1;
+    private static final int ACTION_IGNORE_PENDING_INTENT_ID = 14;
 
     public static void clearAllNotifications(Context context) {
         NotificationManager notificationManager = (NotificationManager) context
@@ -68,6 +74,9 @@ public class NotificationUtils {
                 .setDefaults(Notification.DEFAULT_VIBRATE)
                 //pending intent of MainActivity
                 .setContentIntent(contentIntent(context))
+                //can have up to 3 actions
+                .addAction(drinkWaterAction(context))
+                .addAction(ignoreReminderAction(context))
                 //notification will go away when its been clicked.
                 .setAutoCancel(true);
 
@@ -78,6 +87,24 @@ public class NotificationUtils {
         }
 
         notificationManager.notify(WATER_REMINDER_NOTIFICATION_ID, notificationBuilder.build());
+    }
+
+    private static NotificationCompat.Action ignoreReminderAction(Context context) {
+        Intent ignoreReminderIntent = new Intent(context, WaterReminderIntentService.class);
+        ignoreReminderIntent.setAction(ReminderTasks.ACTION_DISMISS_NOTIFICATION);
+        PendingIntent ignoreReminderPendingIntent = PendingIntent.getService(context, ACTION_IGNORE_PENDING_INTENT_ID, ignoreReminderIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Action ignoreReminderAction = new NotificationCompat.Action(R.drawable.ic_cancel_black_24px, "No, thanks.", ignoreReminderPendingIntent);
+        return ignoreReminderAction;
+    }
+
+    private static Action drinkWaterAction(Context context) {
+        Intent incrementWaterCountIntent = new Intent(context, WaterReminderIntentService.class);
+        incrementWaterCountIntent.setAction(ReminderTasks.ACTION_INCREMENT_WATER_COUNT);
+        //pending intent
+        PendingIntent incrementWaterPendingIntent = PendingIntent.getService(context, ACTION_DRINK_PENDING_INTENT_ID, incrementWaterCountIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+        Action drinkWaterAction = new Action(R.drawable.ic_local_drink_black_24px, "I did it!", incrementWaterPendingIntent);
+        return drinkWaterAction;
     }
 
     //creates a pending intent which will trigger when the notification is pressed.
