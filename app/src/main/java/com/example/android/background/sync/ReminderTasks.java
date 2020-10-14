@@ -12,7 +12,8 @@ public class ReminderTasks {
 
     public static final String ACTION_DISMISS_NOTIFICATION = "dismiss-notification";
 
-    private static final int ACTION_IGNORE_PENDING_INTENT_ID = 3248;
+    public static final String ACTION_CHARGING_REMINDER = "charging-reminder";
+
 
     public static void executeTask(Context context, String action) {
         if(ACTION_INCREMENT_WATER_COUNT.equals(action)) {
@@ -23,7 +24,17 @@ public class ReminderTasks {
             // dismisses notification
             NotificationUtils.clearAllNotifications(context);
         }
+        else if (ACTION_CHARGING_REMINDER.equals(action)) {
+            issueChargingReminder(context);
+        }
     }
+
+    // issue a notification and also increment the charging reminder count
+    private static void issueChargingReminder(final Context context) {
+        PreferenceUtilities.incrementChargingReminderCount(context);
+        NotificationUtils.remindUserBecauseCharging(context);
+    }
+
     private static void incrementWaterCount(Context context) {
         PreferenceUtilities.incrementWaterCount(context);
         // dismisses notification
