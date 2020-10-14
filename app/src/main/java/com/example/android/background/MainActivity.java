@@ -15,7 +15,10 @@
  */
 package com.example.android.background;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -24,20 +27,22 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import com.example.android.background.sync.ReminderTasks;
 import com.example.android.background.sync.ReminderUtilities;
 import com.example.android.background.sync.WaterReminderIntentService;
-import com.example.android.background.utilities.NotificationUtils;
 import com.example.android.background.utilities.PreferenceUtilities;
 
 public class MainActivity extends AppCompatActivity implements
         SharedPreferences.OnSharedPreferenceChangeListener {
 
+
     private TextView mWaterCountDisplay;
     private TextView mChargingCountDisplay;
     private ImageView mChargingImageView;
-
     private Toast mToast;
+    private ChargingBroadcastReceiver mChargingBroadcastReceiver;
+    private IntentFilter mChargingFilter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,12 +57,28 @@ public class MainActivity extends AppCompatActivity implements
         /** Set the original values in the UI **/
         updateWaterCount();
         updateChargingReminderCount();
-
         ReminderUtilities.scheduleChargingReminder(this);
 
         /** Setup the shared preference listener **/
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         prefs.registerOnSharedPreferenceChangeListener(this);
+
+        mChargingBroadcastReceiver = new ChargingBroadcastReceiver();
+        mChargingFilter = new IntentFilter();
+        mChargingFilter.addAction(Intent.ACTION_POWER_CONNECTED);
+        mChargingFilter.addAction(Intent.ACTION_POWER_DISCONNECTED);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(mChargingBroadcastReceiver);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        registerReceiver(mChargingBroadcastReceiver, mChargingFilter);
     }
 
     /**
@@ -79,6 +100,14 @@ public class MainActivity extends AppCompatActivity implements
 
     }
 
+    //displays a charging image when device is/not plugged in.
+    private void showCharging(boolean isCharging) {
+        if(isCharging)
+            mChargingImageView.setImageResource(R.drawable.ic_power_pink_80px);
+        else
+            mChargingImageView.setImageResource(R.drawable.ic_power_grey_80px);
+    }
+
     /**
      * Adds one to the water count and shows a toast
      */
@@ -91,6 +120,7 @@ public class MainActivity extends AppCompatActivity implements
         incrementWaterCountIntent.setAction(ReminderTasks.ACTION_INCREMENT_WATER_COUNT);
         startService(incrementWaterCountIntent);
     }
+
 
     @Override
     protected void onDestroy() {
@@ -110,6 +140,15 @@ public class MainActivity extends AppCompatActivity implements
             updateWaterCount();
         } else if (PreferenceUtilities.KEY_CHARGING_REMINDER_COUNT.equals(key)) {
             updateChargingReminderCount();
+        }
+    }
+
+    private class ChargingBroadcastReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(final Context context, final Intent intent) {
+            String action = intent.getAction();
+            showCharging(action.equals(Intent.ACTION_POWER_CONNECTED));
         }
     }
 }
